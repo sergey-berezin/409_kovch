@@ -10,13 +10,19 @@ namespace yolo_app
         {
             if (args.Length == 0) 
             {
-                Console.WriteLine("YOLO detected that you forgot to specify the path to the image.");
+                Console.WriteLine("YOLO detected that you forgot to specify the path to the images.");
                 return;
             }
-            if (!File.Exists(args[0]))
+            
+            foreach (var arg in args) 
             {
-                Console.WriteLine("Specified image seems to be absent.");
-            } 
+                if (!File.Exists(arg))
+                {
+                    Console.WriteLine("Specified image seems to be absent " + arg.ToString());
+                    return;
+                } 
+            }
+
             List<CSVBoxInfo> boxes = new();
             Task mainTask = Task.WhenAll(args.Select(arg => {
                 return Task.Run(async () => {
@@ -44,6 +50,7 @@ namespace yolo_app
                     }
                 }, token);
             }));
+
             try 
             {
                 await mainTask;
@@ -52,24 +59,24 @@ namespace yolo_app
             {
                 Console.WriteLine(exc.Message);
             }
-            FileStream ? fs = null;
-            string csvPath = $"{ResultDirPath}\\boxes.csv";
+            
             try 
             {
-                if (!File.Exists(csvPath))
-                {
-                    File.Create(csvPath);
+                string csvPath = $"{ResultDirPath}\\boxes.csv";
+                using FileStream fs = new(csvPath, FileMode.Append, FileAccess.Write);
+                using StreamWriter sw = new(fs);
+                foreach (var box in boxes) {
+                    sw.WriteLine(box.ToString());
                 }
-                File.AppendAllLines(csvPath, boxes.Select(box => box.ToString()));
             }
             catch (Exception exc) 
             {
                 Console.WriteLine(exc.Message);
             }
-            finally
-            {
-                fs?.Close();
-            }
+
+            Console.CancelKeyPress += delegate {
+                cts.Cancel();
+            };
         }
 
         private record CSVBoxInfo(string Filename, string Classname, double X, double Y, double W, double H)

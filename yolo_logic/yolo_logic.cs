@@ -2,10 +2,15 @@
 using Microsoft.ML.OnnxRuntime.Tensors;
 using Microsoft.ML.OnnxRuntime;
 using SixLabors.Fonts;
+using Microsoft.Extensions.Logging;
 namespace yolo_logic
 {
     public static class Yolo_logic
     {
+        public static ILogger? Logger = null;
+        private const string URL = "https://storage.yandexcloud.net/dotnet4/tinyyolov2-8.onnx";
+        private static InferenceSession? YoloSession = null;
+        private static readonly SemaphoreSlim Semaphore = new(1, 1);
         private const int ClassCount = 20;
         private const int TargetSize = 416;
         private const int CellCount = 13;
@@ -61,11 +66,38 @@ namespace yolo_logic
                NamedOnnxValue.CreateFromTensor("image", input),
             };
         }
+        private static async Task DownloadYolo(CancellationToken token) {
+            Logger?.Log("Por que es malo y lento.");
+            using var client = new HttpClient();
+            using var data = await client.GetStreamAsync(URL, token);
+            using var fs = new FileStream("model.onnx", FileMode.OpenOrCreate);
+            await data.CopyToAsync(fs, token);
+            Logger?.Log("LLuvia en Moscu es grande y poco degradable.");
+        }
 
+        private static async Task InitYolo(CancellationToken token) {
+            Semaphore.Wait(token);
+            bool ready = false;
+            while (YoloSession == null) {
+                try {
+                    YoloSession = new InferenceSession("model.onnx");
+                    ready = YoloSession != null;
+                }
+                catch (Exception exc) {
+                    Logger?.Log(exc.Message);
+                }
+                if (!ready){
+                    await DownloadYolo(token);
+                }
+            }
+            Semaphore.Release();
+        }
         private static Tensor<float> YoloMagic(List<NamedOnnxValue> inputs)
         {
-            var session = new InferenceSession("D:\\Berezin\\FunnyPictures_1\\yolo_logic\\tinyyolov2-8.onnx");  
-            var results = session.Run(inputs);
+            if (YoloSession == null) {
+                throw new Exception("Yolo session is null.");
+            } 
+            var results = YoloSession.Run(inputs);
             return results[0].AsTensor<float>();
         }
 
@@ -157,13 +189,13 @@ namespace yolo_logic
 
         public static async Task<DetectionInfo> ProcessImageAsync(Image<Rgb24> image, CancellationToken token) 
         {
-            Task<Image<Rgb24>> resizeImageTask = Task.Run(() => ImageResize(image), token);
-            Task<List<NamedOnnxValue>> image2TensorTask = resizeImageTask.ContinueWith(x => Image2Tensor(x.Result), token);
-            await image2TensorTask;
-            Task<Tensor<float>> yoloMagicTask = image2TensorTask.ContinueWith(x => YoloMagic(x.Result), token);
-            Task<List<ObjectBox>> calculateBoxesTask = yoloMagicTask.ContinueWith(x => CalculateBoxes(x.Result), token);
-            Task removeDuplicateBoxesTask = calculateBoxesTask.ContinueWith(x => RemoveDuplicateBoxes(x.Result), token);
-            Task annotateTask = removeDuplicateBoxesTask.ContinueWith(x => Annotate(resizeImageTask.Result, calculateBoxesTask.Result), token);
+            var initYoloTask             = Task.Run(() => InitYolo(token), token);
+            var resizeImageTask          = Task.Run(() => ImageResize(image), token);
+            var image2TensorTask         = resizeImageTask.ContinueWith(x => Image2Tensor(x.Result), token);
+            var yoloMagicTask            = Task.WhenAll(new Task[] {initYoloTask, image2TensorTask}).ContinueWith(x => YoloMagic(image2TensorTask.Result), token);
+            var calculateBoxesTask       = yoloMagicTask.ContinueWith(x => CalculateBoxes(x.Result), token);
+            var removeDuplicateBoxesTask = calculateBoxesTask.ContinueWith(x => RemoveDuplicateBoxes(x.Result), token);
+            var annotateTask             = removeDuplicateBoxesTask.ContinueWith(x => Annotate(resizeImageTask.Result, calculateBoxesTask.Result), token);
             await annotateTask;
             return new DetectionInfo(resizeImageTask.Result, calculateBoxesTask.Result);
         }
@@ -196,7 +228,19 @@ namespace yolo_logic
     public record ObjectBox(double XMin, double YMin, double XMax, double YMax, double Confidence, int Class)
     {
         public double IoU(ObjectBox b2) =>
-            (Math.Min(XMax, b2.XMax) - Math.Max(XMin, b2.XMin)) * (Math.Min(YMax, b2.YMax) - Math.Max(YMin, b2.YMin)) /
+             (Math.Min(XMax, b2.XMax) - Math.Max(XMin, b2.XMin)) * (Math.Min(YMax, b2.YMax) - Math.Max(YMin, b2.YMin)) /
             ((Math.Max(XMax, b2.XMax) - Math.Min(XMin, b2.XMin)) * (Math.Max(YMax, b2.YMax) - Math.Min(YMin, b2.YMin)));
+    }
+
+    public class Logger : ILogger
+    {
+        public void Log(string stringToLog)
+        {
+           Console.WriteLine(stringToLog);
+        }
+    }
+    public interface ILogger
+    {
+        void Log(string stringToLog);
     }
 }
