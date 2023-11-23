@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+	<UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Kovch.FunnyPictures" Version="1.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DetectionLib\DetectionLib.csproj" />
+    <ProjectReference Include="..\ImageProcessingLib\DetectionLib.csproj" />
+  </ItemGroup>
+
+</Project>
