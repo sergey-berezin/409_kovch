@@ -12,7 +12,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DetectionLib\DetectionLib.csproj" />
-    <ProjectReference Include="..\ImageProcessingLib\DetectionLib.csproj" />
   </ItemGroup>
 
 </Project>
