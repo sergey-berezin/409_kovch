@@ -4,6 +4,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using System;
 using System.Collections.Generic;
+using System.IO.Packaging;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -73,21 +74,27 @@ namespace ViewModel
                 }
             }
         }
-
         public List<DetectedImageView> DetectedImages { get; private set; }
 
         private readonly IUIShaha uiShaha;
 
+        private JsonStorage ImageBag;
         private void OnSelectFolder(object arg)
         {
             string? folderName = uiShaha.GetPwd();
             if (folderName == null) { return; }
             Pwd = folderName;
         }
-
+        private void AddDetectedImageView(IEnumerable<DetectedObject> detectedObjects)
+        {
+            IsDetecting = true;
+            DetectedImages = DetectedImages.Concat(
+                detectedObjects.Select(x => new DetectedImageView(x))).ToList();
+            RaisePropertyChanged(nameof(DetectedImages));
+            IsDetecting = false;
+        }
         public async Task OnRunModel(object arg)
         {
-            DetectedImages.Clear();
             RaisePropertyChanged(nameof(DetectedImages));
             try
             {
@@ -101,19 +108,31 @@ namespace ViewModel
                     return;
                 }
 
-                var tasks = fileNames.Select(arg =>
-                    Task.Run(() => ImageDetection.DetectImage(arg, Cts.Token))
-                ).ToList();
+                IEnumerable<ImageSerialization> images = ImageBag.GetImagePresentations();
+                fileNames = fileNames.Where(x => !images.Any(y => y.Filename == x)).ToList();
+                if (fileNames.Count == 0)
+                {
+                    uiShaha.ShowError("All files have already been processed.");
+                    return;
+                }
 
+                var tasks = fileNames.Select(arg => Task.Run(() => ImageDetection.DetectImage(arg, Cts.Token))).ToList();
+                int previousLength = ImageBag.Count;
                 while (tasks.Any())
                 {
                     var task = await Task.WhenAny(tasks);
                     var detectedObjects = task.Result.ToList();
+
+                    int taskIndex = tasks.IndexOf(task);
+                    string filename = fileNames[taskIndex];
                     tasks.Remove(task);
-                    DetectedImages = DetectedImages.Concat(
-                        detectedObjects.Select(x => new DetectedImageView(x))
-                    ).ToList();
-                    RaisePropertyChanged(nameof(DetectedImages));
+                    fileNames.RemoveAt(taskIndex);
+                    ImageBag.AddImage(new ImageSerialization(detectedObjects, filename));
+                    AddDetectedImageView(detectedObjects);
+                }
+                if (ImageBag.Count > previousLength)
+                {
+                    ImageBag.Save();
                 }
             }
             catch (Exception exc)
@@ -131,20 +150,35 @@ namespace ViewModel
             Cts?.Cancel();
         }
 
+        public void OnClearJson(object arg)
+        {
+            ImageBag.Delete();
+            DetectedImages.Clear();
+            DetectedImages = new List<DetectedImageView>();
+            RaisePropertyChanged(nameof(DetectedImages));
+        }
+
         public ICommand SelectFolderCommand { get; private set; }
-        public ICommand RunModelCommand { get; private set; }
-        public ICommand AbortCommand { get; private set; }
+        public ICommand     RunModelCommand { get; private set; }
+        public ICommand        AbortCommand { get; private set; }
+        public ICommand        ClearCommand { get; private set; }
 
         public ViewModelClass(IUIShaha uiShaha)
         {
-            Pwd = string.Empty;
+            Pwd = "Restored previous folder";
             DetectedImages = new List<DetectedImageView>();
 
             this.uiShaha = uiShaha;
 
+            ImageBag = new JsonStorage();
+            ImageBag.Load();
+            foreach (var img in ImageBag.GetImagePresentations())
+                AddDetectedImageView(img.ToDetectedObjectList());
+
             SelectFolderCommand = new RelayCommand(OnSelectFolder, x => !IsDetecting);
-            RunModelCommand = new AsyncRelayCommand(OnRunModel, x => Pwd != string.Empty && !IsDetecting);
-            AbortCommand = new RelayCommand(OnRequestCancellation, x => IsDetecting);
+            RunModelCommand     = new AsyncRelayCommand(OnRunModel, x => Pwd != string.Empty && !IsDetecting);
+            AbortCommand        = new RelayCommand(OnRequestCancellation, x => IsDetecting);
+            ClearCommand        = new RelayCommand(OnClearJson, x => !IsDetecting);
         }
     }
 }

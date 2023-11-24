@@ -56,8 +56,10 @@
                           Command="{Binding RunModelCommand}"/>
                 <MenuItem Header="Abort" FontSize="20" FontWeight="Medium"
                           Command="{Binding AbortCommand}"/>
-                <TextBlock Text="Aqí: " FontSize="20" FontWeight="Light" Padding="40,0,0,0"/>
-                <TextBlock Text="{Binding Pwd}" FontSize="20" FontWeight="Light"/>
+                <MenuItem Header="Clear" FontSize="20" FontWeight="Medium"
+                          Command="{Binding ClearCommand}"/>
+                <TextBlock Text="Aqí: " FontSize="16" FontWeight="Light" Padding="5,4,0,0"/>
+                <TextBlock Text="{Binding Pwd}" FontSize="16" FontWeight="Light" Padding="0,4,0,0"/>
             </Menu>
             <Menu HorizontalAlignment="Right" Background="Transparent">
                 <MenuItem Header="_" FontSize="20" FontWeight="Medium" HorizontalAlignment="Right"
