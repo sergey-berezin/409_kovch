@@ -13,7 +13,7 @@ namespace DetectionLib
         public int Width { get; set; }
         public List<string> Classes { get; set; }
         public List<double> Confidences { get; set; }
-        public List<ObjectBox> ObjectBoxes { get; set; }
+        public List<ObjectBox> Boxes { get; set; }
         public string Filename { get; set; }
 
         public ImageSerialization(IEnumerable<DetectedObject> detection, string filename)
@@ -26,7 +26,7 @@ namespace DetectionLib
                 Width = 0;
                 Classes = new List<string>();
                 Confidences = new List<double>();
-                ObjectBoxes = new List<ObjectBox>();
+                Boxes = new List<ObjectBox>();
             }
             else
             {
@@ -38,14 +38,13 @@ namespace DetectionLib
                 Width  = image.Width;
                 Classes     = detection.Select(x => x.Class).ToList();
                 Confidences = detection.Select(x => x.Confidence).ToList();
-                ObjectBoxes = detection.Select(x => x.Box).ToList();
+                Boxes = detection.Select(x => x.Box).ToList();
             }
-            Filename = filename;
         }
 
         public List<DetectedObject> ToDetectedObjectList()
         {
-            List<DetectedObject> detected = new List<DetectedObject>();
+            List<DetectedObject> detected = new();
             byte[] bytePixels = Convert.FromBase64String(Pixels);
             Image<Rgb24> image = Image.LoadPixelData<Rgb24>(bytePixels, Width, Height);
             for (int i = 0; i < Classes.Count; i++)
@@ -55,8 +54,8 @@ namespace DetectionLib
                         image,
                         Classes[i],
                         Confidences[i],
-                        ImageDetection.ExtractDetectedObject(image, ObjectBoxes[i]),
-                        ObjectBoxes[i]
+                        ImageDetection.ExtractDetectedObject(image, Boxes[i]),
+                        Boxes[i]
                     )
                 );
             }
@@ -67,14 +66,14 @@ namespace DetectionLib
     public class JsonStorage
     {
         public string Path { get; private set; }
-        private List<ImageSerialization> Images;
+        public List<ImageSerialization> Images;
 
         public int Count
         {
             get => Images.Count;
         }
 
-        public JsonStorage(string path = "storage.json")
+        public JsonStorage(string path = "JsonStorage.json")
         {
             Path = path;
             Images = new List<ImageSerialization>();
@@ -96,45 +95,48 @@ namespace DetectionLib
                 return;
             }
             var images = JsonConvert.DeserializeObject<List<ImageSerialization>>(File.ReadAllText(Path));
-            if (images != null)
-                Images = images;
-            else
+            if (images == null)
+            {
                 Images = new List<ImageSerialization>();
+            }
+            else
+            {
+                Images = images;
+            }
         }
 
         public void Save()
         {
-            string tmpPath = Path + ".tmp";
+            string tmp = Path + ".tmp";
             string serialized = JsonConvert.SerializeObject(Images, Formatting.Indented);
-            using (StreamWriter writer = new(tmpPath))
+            using (StreamWriter sw = new(tmp))
             {
-                writer.WriteLine(serialized);
+                sw.WriteLine(serialized);
             }
-            if (File.Exists(tmpPath))
+            if (File.Exists(tmp))
             {
                 File.Delete(Path);
-                File.Copy(tmpPath, Path);
+                File.Copy(tmp, Path);
+                File.Delete(tmp);
             }
         }
 
-        public void AddImage(ImageSerialization image)
+        public void AddImage(ImageSerialization newImg)
         {
-            bool imageExists = false;
-            foreach (var existing in Images)
+            bool dublicate = false;
+
+            foreach (var img in Images)
             {
-                if (image.Pixels == existing.Pixels || image.Filename == existing.Filename)
+                if (newImg.Pixels == img.Pixels || newImg.Filename == img.Filename)
                 {
-                    imageExists = true;
+                    dublicate = true;
                     break;
                 }
             }
-            if (!imageExists && image.Height > 0 && image.Width > 0)
-                Images.Add(image);
-        }
-
-        public IEnumerable<ImageSerialization> GetImagePresentations()
-        {
-            return Images.Select(x => x);
+            if (newImg.Height != 0 && newImg.Width != 0 && !dublicate)
+            {
+                Images.Add(newImg);
+            }
         }
     }
 }

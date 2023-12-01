@@ -9,6 +9,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -78,20 +79,12 @@ namespace ViewModel
 
         private readonly IUIShaha uiShaha;
 
-        private JsonStorage ImageBag;
+        private readonly JsonStorage ImageBag;
         private void OnSelectFolder(object arg)
         {
             string? folderName = uiShaha.GetPwd();
             if (folderName == null) { return; }
             Pwd = folderName;
-        }
-        private void AddDetectedImageView(IEnumerable<DetectedObject> detectedObjects)
-        {
-            IsDetecting = true;
-            DetectedImages = DetectedImages.Concat(
-                detectedObjects.Select(x => new DetectedImageView(x))).ToList();
-            RaisePropertyChanged(nameof(DetectedImages));
-            IsDetecting = false;
         }
         public async Task OnRunModel(object arg)
         {
@@ -107,30 +100,28 @@ namespace ViewModel
                     uiShaha.ShowError("There are no jpg files in selected folder.");
                     return;
                 }
+          
+                var tasks = fileNames.Select(filename => Task.Run(() => ImageDetection.DetectImage(filename, Cts.Token))).ToList();
+                int oldCount = ImageBag.Count;
 
-                IEnumerable<ImageSerialization> images = ImageBag.GetImagePresentations();
-                fileNames = fileNames.Where(x => !images.Any(y => y.Filename == x)).ToList();
-                if (fileNames.Count == 0)
-                {
-                    uiShaha.ShowError("All files have already been processed.");
-                    return;
-                }
-
-                var tasks = fileNames.Select(arg => Task.Run(() => ImageDetection.DetectImage(arg, Cts.Token))).ToList();
-                int previousLength = ImageBag.Count;
                 while (tasks.Any())
                 {
-                    var task = await Task.WhenAny(tasks);
-                    var detectedObjects = task.Result.ToList();
+                    var cur = await Task.WhenAny(tasks);
+                    var detectedObjects = cur.Result.ToList();
 
-                    int taskIndex = tasks.IndexOf(task);
-                    string filename = fileNames[taskIndex];
-                    tasks.Remove(task);
-                    fileNames.RemoveAt(taskIndex);
+                    var index = tasks.IndexOf(cur);
+                    var filename = fileNames[index];
+
+                    tasks.Remove(cur);
+                    fileNames.RemoveAt(index);
+
                     ImageBag.AddImage(new ImageSerialization(detectedObjects, filename));
-                    AddDetectedImageView(detectedObjects);
+                    DetectedImages = DetectedImages.Concat(
+                        detectedObjects.Select(x => new DetectedImageView(x))).ToList();
+                    RaisePropertyChanged(nameof(DetectedImages));
                 }
-                if (ImageBag.Count > previousLength)
+
+                if (ImageBag.Count > oldCount)
                 {
                     ImageBag.Save();
                 }
@@ -172,11 +163,16 @@ namespace ViewModel
 
             ImageBag = new JsonStorage();
             ImageBag.Load();
-            foreach (var img in ImageBag.GetImagePresentations())
-                AddDetectedImageView(img.ToDetectedObjectList());
+
+            foreach (var img in ImageBag.Images.Select(x => x))
+            {
+                DetectedImages = DetectedImages.Concat(
+                    img.ToDetectedObjectList().Select(x => new DetectedImageView(x))).ToList();
+                RaisePropertyChanged(nameof(DetectedImages));
+            }
 
             SelectFolderCommand = new RelayCommand(OnSelectFolder, x => !IsDetecting);
-            RunModelCommand     = new AsyncRelayCommand(OnRunModel, x => Pwd != string.Empty && !IsDetecting);
+            RunModelCommand     = new AsyncRelayCommand(OnRunModel, x => Pwd != "Restored previous folder" && !IsDetecting);
             AbortCommand        = new RelayCommand(OnRequestCancellation, x => IsDetecting);
             ClearCommand        = new RelayCommand(OnClearJson, x => !IsDetecting);
         }
