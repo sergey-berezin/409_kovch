@@ -100,7 +100,15 @@ namespace ViewModel
                     uiShaha.ShowError("There are no jpg files in selected folder.");
                     return;
                 }
-          
+
+                List<string> oldFilenames = ImageBag.Images.Select(img => img.Filename).ToList();
+                fileNames = fileNames.Except(oldFilenames).ToList();
+                if (fileNames.Count == 0)
+                {
+                    uiShaha.ShowError("There's nothing new to detect.");
+                    return;
+                }
+
                 var tasks = fileNames.Select(filename => Task.Run(() => ImageDetection.DetectImage(filename, Cts.Token))).ToList();
                 int oldCount = ImageBag.Count;
 
