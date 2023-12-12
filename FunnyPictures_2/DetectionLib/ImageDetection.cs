@@ -38,7 +38,7 @@ namespace DetectionLib
                 );
         }
 
-        private static Image<Rgb24> ExtractDetectedObject(Image<Rgb24> original, ObjectBox box)
+        public static Image<Rgb24> ExtractDetectedObject(Image<Rgb24> original, ObjectBox box)
         {
             int x = (int)box.XMin;
             int y = (int)box.YMin;
