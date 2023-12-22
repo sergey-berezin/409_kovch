@@ -1,0 +1,57 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>ObjectDetection</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <input type="file" accept="image/jpeg, image/jpg" id="input-file">
+	<span>Current image:</span>
+	<img id="current-img">
+
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+    <script type="text/javascript">
+		let curentImg = document.getElementById("current-img");
+		let inputFile = document.getElementById("input-file");
+		
+		inputFile.onchange = function() {
+			curentImg.src = URL.createObjectURL(inputFile.files[0]);
+		}
+
+        fileInput.addEventListener("change", e => {
+
+            const file = fileInput.files[0]
+            const reader = new FileReader();
+
+            reader.addEventListener("load", () => {
+
+                const getFromDataURL = (dataURL) =>
+                    dataURL.replace('data:', '').replace(/^.+,/, '');
+
+                var base64 = getFromDataURL(reader.result)
+
+                Post(base64);
+            });
+
+            reader.readAsDataURL(file);
+
+        });
+
+
+        async function Post(image) {
+			await fetch('https://localhost:7151/FunnyPictures', {
+                method: 'POST',
+                headers: {
+                    'accept': 'image',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(image),
+				})
+                .then(response => { return response.json(); })
+                .then(result => { text_id = result; })
+        }
+
+    </script>
+</body>
+</html>

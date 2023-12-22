@@ -4,7 +4,7 @@ using Microsoft.ML.OnnxRuntime;
 using SixLabors.Fonts;
 namespace yolo_logic
 {
-    public static class Yolo_logic
+    public class Yolo_logic
     {
         public static ILogger? Logger = null;
         private const string URL = "https://storage.yandexcloud.net/dotnet4/tinyyolov2-8.onnx";
@@ -66,15 +66,13 @@ namespace yolo_logic
             };
         }
         private static async Task DownloadYolo(CancellationToken token) {
-            Logger?.Log("Por que es malo y lento.");
             using var client = new HttpClient();
             using var data = await client.GetStreamAsync(URL, token);
             using var fs = new FileStream("model.onnx", FileMode.OpenOrCreate);
             await data.CopyToAsync(fs, token);
-            Logger?.Log("LLuvia en Moscu es grande y poco degradable.");
         }
 
-        private static async Task InitYolo(CancellationToken token) {
+        public static async Task InitYolo(CancellationToken token) {
             Semaphore.Wait(token);
             bool ready = false;
             while (YoloSession == null) {
