@@ -19,12 +19,10 @@ if (app.Environment.IsDevelopment())
 app.UseCors(builder =>
 {
     builder
-        .WithOrigins("*")
-        .WithHeaders("*")
-        .WithMethods("*");
+    .WithOrigins("*")
+    .WithHeaders("*")
+    .WithMethods("*");
 });
-
-app.UseHttpsRedirection();
 
 app.UseAuthorization();
 

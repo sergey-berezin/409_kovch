@@ -1,0 +1,112 @@
+﻿<!doctype html>
+<head>
+    <title>Web Funny Pictures</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container" id="blur">
+        <input type="file" accept="image/jpeg" id="selected_image" class="btn">
+        <p>Selected jpeg:</p>
+        <canvas id="jpeg_canvas" height="300" width="416"></canvas>
+        <div id="detection"></div>
+    </div>
+    <div class="troglodyte" id="troglodyte">
+        <h2>Ltd. Web Funny Pictures </h2>
+        <img src="800x600-troglodyte-homm3.gif" width="150" />
+        <p>Work status:</p>
+        <div id="status"></div>
+    </div>
+    <script type="text/javascript">
+		const orig_canvas = document.getElementById("jpeg_canvas");
+		const api_url = "https://localhost:7215/api/WebFunnyPictures";
+		var troglodyte = document.getElementById("troglodyte");
+
+		function DrawImage(source, canvas) {
+			let ctx = canvas.getContext("2d");
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			let image = new Image();
+			image.onload = function() {
+				ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+			}
+			image.src = source;
+		}
+
+		async function Detect(imageString) {
+			let options = {
+				method: "POST",
+				body: imageString,
+				headers: {
+					"Content-Type": "application/json"
+				}
+			};
+			let resp = await fetch(api_url, options);
+			return resp.json();
+		}
+
+		function DrawDetection(json) {
+			let div = document.getElementById("detection");
+			div.innerHTML = "";
+			document.getElementById("status").innerText = Object.getOwnPropertyNames(json);
+			json.sort(function(d1, d2) {
+				if (d1.confidence < d2.confidence) {
+					return 1;
+				}
+				return -1;
+			});
+
+			for (let i = 0; i < json.length; i++) {
+				var detection = json[i];
+				var detection_div = document.createElement("div");
+
+				var canvas = document.createElement("canvas");
+				canvas.height = 200;
+				canvas.width = 200;
+				detection_div.appendChild(canvas);
+
+				var info_div = document.createElement("p");
+				info_div.innerText = detection.label + " " + detection.confidence;
+				detection_div.appendChild(info_div);
+
+				div.appendChild(detection_div);
+				DrawImage("data:image/png;base64," + detection.image, canvas);
+			}
+		}
+
+		async function OnReaderLoad(event) {
+			let original = event.target.result;
+			try {
+				toggleTroglodyte();
+				DrawImage(original, orig_canvas);
+				document.getElementById("status").innerText = "Detecting image";
+				let resp = await Detect(JSON.stringify(original.replace("data:image/jpeg;base64,", "")));
+				DrawDetection(resp);
+				document.getElementById("status").innerText = "Success";
+			}
+			catch (exception) {
+				document.getElementById("status").innerText = exception;
+			}
+			var millisecondsToWait = 2000;
+			setTimeout(function() {
+				toggleTroglodyte();
+			}, millisecondsToWait);
+		}
+
+		function ListenForImage(event) {
+			let data = this.files[0];
+			if (!data)
+				return;
+			let reader = new FileReader();
+			reader.onload = OnReaderLoad;
+			reader.readAsDataURL(data);
+		}
+
+		document.getElementById("selected_image").addEventListener("change", ListenForImage);
+
+		function toggleTroglodyte() {
+			var blur = document.getElementById('blur');
+			blur.classList.toggle('active');
+			var troglodyte = document.getElementById('troglodyte');
+			troglodyte.classList.toggle('active')
+		}
+    </script>
+</body>

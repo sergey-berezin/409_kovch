@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34330.188
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TheFunnyPicturesWeb", "TheFunnyPicturesWeb\TheFunnyPicturesWeb.csproj", "{47946CC8-C43F-4942-A0E8-022D12112C49}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebTests", "WebTests\WebTests.csproj", "{41FC7563-CFE2-418B-8874-8E534239D7F2}"
+	ProjectSection(ProjectDependencies) = postProject
+		{47946CC8-C43F-4942-A0E8-022D12112C49} = {47946CC8-C43F-4942-A0E8-022D12112C49}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{47946CC8-C43F-4942-A0E8-022D12112C49}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{47946CC8-C43F-4942-A0E8-022D12112C49}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{47946CC8-C43F-4942-A0E8-022D12112C49}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{47946CC8-C43F-4942-A0E8-022D12112C49}.Release|Any CPU.Build.0 = Release|Any CPU
+		{41FC7563-CFE2-418B-8874-8E534239D7F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{41FC7563-CFE2-418B-8874-8E534239D7F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{41FC7563-CFE2-418B-8874-8E534239D7F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{41FC7563-CFE2-418B-8874-8E534239D7F2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {AE987939-BF3E-490C-9CAC-78FDEACC2C65}
+	EndGlobalSection
+EndGlobal
